@@ -49,7 +49,7 @@ def update_model_with_lora(checkpoint, lora_weights, transformer, cond_size, dev
                             lora_state_dicts[key] = value
                 
                 lora_attn_procs[name] = MultiDoubleStreamBlockLoraProcessor(
-                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=number
+                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat8, cond_width=cond_size, cond_height=cond_size, n_loras=number
                 )
                 
                 # Load the weights from the checkpoint dictionary into the corresponding layers
@@ -75,7 +75,7 @@ def update_model_with_lora(checkpoint, lora_weights, transformer, cond_size, dev
                             lora_state_dicts[key] = value
                 
                 lora_attn_procs[name] = MultiSingleStreamBlockLoraProcessor(
-                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=number
+                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat8, cond_width=cond_size, cond_height=cond_size, n_loras=number
                 )
                 # Load the weights from the checkpoint dictionary into the corresponding layers
                 for n in range(number):
@@ -121,7 +121,7 @@ def update_model_with_multi_lora(checkpoints, lora_weights, transformer, cond_si
                                 lora_state_dicts[idx][key] = value
                 
                 lora_attn_procs[name] = MultiDoubleStreamBlockLoraProcessor(
-                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=multi_lora_weight, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=cond_number
+                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=multi_lora_weight, device=device, dtype=torch.bfloat8, cond_width=cond_size, cond_height=cond_size, n_loras=cond_number
                 )
                 
                 # Load the weights from the checkpoint dictionary into the corresponding layers
@@ -151,7 +151,7 @@ def update_model_with_multi_lora(checkpoints, lora_weights, transformer, cond_si
                                 lora_state_dicts[idx][key] = value
                 
                 lora_attn_procs[name] = MultiSingleStreamBlockLoraProcessor(
-                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=multi_lora_weight, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=cond_number
+                    dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=multi_lora_weight, device=device, dtype=torch.bfloat8, cond_width=cond_size, cond_height=cond_size, n_loras=cond_number
                 )
                 # Load the weights from the checkpoint dictionary into the corresponding layers
                 num = 0

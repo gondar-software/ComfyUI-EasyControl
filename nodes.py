@@ -42,13 +42,13 @@ class EasyControlLoader:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         pipe = FluxPipeline.from_pretrained(
             base_path,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=torch.bfloat8,
             device=device,
         )
         transformer = FluxTransformer2DModel.from_pretrained(
             base_path,
             subfolder="transformer",
-            torch_dtype=torch.bfloat16,
+            torch_dtype=torch.bfloat8,
             device=device,
         )
         lora_path = folder_paths.get_full_path("loras", lora_name)
