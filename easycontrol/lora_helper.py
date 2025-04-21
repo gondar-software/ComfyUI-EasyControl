@@ -1,6 +1,8 @@
 from diffusers.models.attention_processor import FluxAttnProcessor2_0
 from safetensors import safe_open
 import re
+import os
+import copy
 import torch
 from .layers_cache import MultiDoubleStreamBlockLoraProcessor, MultiSingleStreamBlockLoraProcessor
 
@@ -90,7 +92,83 @@ def update_model_with_lora(checkpoint, lora_weights, transformer, cond_size, dev
                 lora_attn_procs[name] = FluxAttnProcessor2_0()
 
         transformer.set_attn_processor(lora_attn_procs)
+
+global_lora_attn_procs = []
+
+def update_model_with_lora_v2(lora_base_path, checkpoint_number, lora_weights, transformer, cond_size, device):
+        lora_files = sorted(os.listdir(lora_base_path))
+        global global_lora_attn_procs
+        if len(global_lora_attn_procs) == 0:
+            for lora_file in lora_files:
+                checkpoint = load_checkpoint(os.path.join(lora_base_path, lora_file))
+                number = len(lora_weights)
+                ranks = [get_lora_rank(checkpoint) for _ in range(number)]
+                lora_attn_procs = {}
+                double_blocks_idx = list(range(19))
+                single_blocks_idx = list(range(38))
+                for name, attn_processor in transformer.attn_processors.items():
+                    match = re.search(r'\.(\d+)\.', name)
+                    if match:
+                        layer_index = int(match.group(1))
+                    
+                    if name.startswith("transformer_blocks") and layer_index in double_blocks_idx:
+                        
+                        lora_state_dicts = {}
+                        for key, value in checkpoint.items():
+                            # Match based on the layer index in the key (assuming the key contains layer index)
+                            if re.search(r'\.(\d+)\.', key):
+                                checkpoint_layer_index = int(re.search(r'\.(\d+)\.', key).group(1))
+                                if checkpoint_layer_index == layer_index and key.startswith("transformer_blocks"):
+                                    lora_state_dicts[key] = value
+                        
+                        lora_attn_procs[name] = MultiDoubleStreamBlockLoraProcessor(
+                            dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=number
+                        )
+                        
+                        # Load the weights from the checkpoint dictionary into the corresponding layers
+                        for n in range(number):
+                            lora_attn_procs[name].q_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.q_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].q_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.q_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].k_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.k_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].k_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.k_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].v_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.v_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].v_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.v_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].proj_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.proj_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].proj_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.proj_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].to(device)
+                        
+                    elif name.startswith("single_transformer_blocks") and layer_index in single_blocks_idx:
+                        
+                        lora_state_dicts = {}
+                        for key, value in checkpoint.items():
+                            # Match based on the layer index in the key (assuming the key contains layer index)
+                            if re.search(r'\.(\d+)\.', key):
+                                checkpoint_layer_index = int(re.search(r'\.(\d+)\.', key).group(1))
+                                if checkpoint_layer_index == layer_index and key.startswith("single_transformer_blocks"):
+                                    lora_state_dicts[key] = value
+                        
+                        lora_attn_procs[name] = MultiSingleStreamBlockLoraProcessor(
+                            dim=3072, ranks=ranks, network_alphas=ranks, lora_weights=lora_weights, device=device, dtype=torch.bfloat16, cond_width=cond_size, cond_height=cond_size, n_loras=number
+                        )
+                        # Load the weights from the checkpoint dictionary into the corresponding layers
+                        for n in range(number):
+                            lora_attn_procs[name].q_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.q_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].q_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.q_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].k_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.k_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].k_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.k_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].v_loras[n].down.weight.data = lora_state_dicts.get(f'{name}.v_loras.{n}.down.weight', None)
+                            lora_attn_procs[name].v_loras[n].up.weight.data = lora_state_dicts.get(f'{name}.v_loras.{n}.up.weight', None)
+                            lora_attn_procs[name].to(device)
+                            
+                    else:
+                        lora_attn_procs[name] = FluxAttnProcessor2_0()
+
+                global_lora_attn_procs.append(lora_attn_procs)
+
+        transformer.set_attn_processor(clone_lora_attn_procs(global_lora_attn_procs[checkpoint_number]))
         
+def clone_lora_attn_procs(lora_attn_procs: dict):
+    return copy.deepcopy(lora_attn_procs)
 
 def update_model_with_multi_lora(checkpoints, lora_weights, transformer, cond_size, device):
         ck_number = len(checkpoints)

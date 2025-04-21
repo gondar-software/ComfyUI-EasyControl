@@ -5,7 +5,7 @@ from PIL import Image
 
 import folder_paths
 
-from .easycontrol.lora_helper import set_single_lora
+from .easycontrol.lora_helper import update_model_with_lora_v2
 from .easycontrol.pipeline import FluxPipeline
 from .easycontrol.transformer_flux import FluxTransformer2DModel
 
@@ -14,22 +14,23 @@ def clear_cache(transformer):
     for name, attn_processor in transformer.attn_processors.items():
         attn_processor.bank_kv.clear()
 
+loras = {
+    "Ghibli": 1,
+    "Snoopy": 2,
+    "3D Cartoon": 3
+}
 
-class EasyControlLoader:
+def list_lora_models():
+    return list(loras.keys())
+
+
+class BaseModelLoader:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "base_path": ("STRING",),
-                "lora_name": (folder_paths.get_filename_list("loras"),),
-                "lora_weight": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.01},
-                ),
-                "cond_size": (
-                    "INT",
-                    {"default": 512, "min": 256, "max": 1024, "step": 64},
-                ),
+                # "lora_name": (folder_paths.get_filename_list("loras"),),
             },
         }
 
@@ -38,7 +39,7 @@ class EasyControlLoader:
     FUNCTION = "load_model"
     CATEGORY = "EasyControl"
 
-    def load_model(self, base_path, lora_name, lora_weight, cond_size):
+    def load_model(self, base_path):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         pipe = FluxPipeline.from_pretrained(
             base_path,
@@ -51,18 +52,8 @@ class EasyControlLoader:
             torch_dtype=torch.bfloat16,
             device=device,
         )
-        lora_path = folder_paths.get_full_path("loras", lora_name)
-        set_single_lora(
-            transformer,
-            lora_path,
-            lora_weights=[lora_weight],
-            cond_size=cond_size,
-            device=device,
-        )
         pipe.transformer = transformer
         pipe.to(device)
-        # pipe.enable_attention_slicing()
-        # pipe.enable_sequential_cpu_offload()
         return (pipe,)
 
 
@@ -72,6 +63,15 @@ class EasyControlSampler:
         return {
             "required": {
                 "pipe": ("MODEL_EASYCONTROL",),
+                "lora_model": (list_lora_models(),),
+                "lora_weight": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "cond_size": (
+                    "INT",
+                    {"default": 512, "min": 256, "max": 1024, "step": 64},
+                ),
                 "prompt": ("STRING", {"multiline": True}),
                 "height": (
                     "INT",
@@ -90,10 +90,6 @@ class EasyControlSampler:
                     {"default": 25, "min": 1, "max": 100, "step": 1},
                 ),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
-                "cond_size": (
-                    "INT",
-                    {"default": 512, "min": 256, "max": 1024, "step": 64},
-                ),
             },
             "optional": {
                 "spatial_image": ("IMAGE",),
@@ -108,16 +104,22 @@ class EasyControlSampler:
     def generate(
         self,
         pipe,
+        lora_model,
+        lora_weight,
+        cond_size,
         prompt,
         height,
         width,
         guidance_scale,
         num_inference_steps,
         seed,
-        cond_size,
         spatial_image=None,
         subject_image=None,
     ):
+        lora_index = loras[lora_model]
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        update_model_with_lora_v2(folder_paths.folder_names_and_paths["loras"], lora_index, [lora_weight], pipe.transformer, cond_size, device)
+
         # Prepare spatial images
         spatial_images = []
         if spatial_image is not None:
@@ -199,11 +201,11 @@ class EasyControlSampler:
 
 
 NODE_CLASS_MAPPINGS = {
-    "EasyControlLoader": EasyControlLoader,
+    "BaseModelLoader": BaseModelLoader,
     "EasyControlSampler": EasyControlSampler,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "EasyControlLoader": "EasyControlLoader",
+    "BaseModelLoader": "BaseModelLoader",
     "EasyControlSampler": "EasyControlSampler",
 }
