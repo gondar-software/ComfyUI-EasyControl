@@ -16,8 +16,9 @@ def clear_cache(transformer):
 
 loras = {
     "Ghibli": 1,
-    "Snoopy": 2,
-    "3D Cartoon": 3
+    "Snoopy_1000": 2,
+    "Snoopy_1500": 3,
+    "3D_Cartoon_640": 0
 }
 
 def list_lora_models():
