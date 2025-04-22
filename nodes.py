@@ -15,10 +15,11 @@ def clear_cache(transformer):
         attn_processor.bank_kv.clear()
 
 loras = {
-    "Ghibli": 1,
-    "Snoopy_1000": 2,
-    "Snoopy_1500": 3,
-    "3D_Cartoon_640": 0
+    "Ghibli": 2,
+    "Snoopy_1000": 3,
+    "Snoopy_1500": 4,
+    "3D_Cartoon_640": 0,
+    "3D_Cartoon_960": 1,
 }
 
 def list_lora_models():
@@ -119,7 +120,7 @@ class EasyControlSampler:
     ):
         lora_index = loras[lora_model]
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        update_model_with_lora_v2(folder_paths.folder_names_and_paths["loras"], lora_index, [lora_weight], pipe.transformer, cond_size, device)
+        update_model_with_lora_v2(str(folder_paths.folder_names_and_paths["loras"][0][0]), lora_index, [lora_weight], pipe.transformer, cond_size, device)
 
         # Prepare spatial images
         spatial_images = []
