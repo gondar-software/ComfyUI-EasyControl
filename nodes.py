@@ -92,6 +92,10 @@ class EasyControlSampler:
                     {"default": 25, "min": 1, "max": 100, "step": 1},
                 ),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+                "zero_steps": (
+                    "INT",
+                    {"default": 1}
+                ),
             },
             "optional": {
                 "spatial_image": ("IMAGE",),
@@ -115,6 +119,7 @@ class EasyControlSampler:
         guidance_scale,
         num_inference_steps,
         seed,
+        zero_steps,
         spatial_image=None,
         subject_image=None,
     ):
@@ -180,6 +185,8 @@ class EasyControlSampler:
             spatial_images=spatial_images,
             subject_images=subject_images,
             cond_size=cond_size,
+            use_zero_init=True,
+            zero_steps=int(zero_steps)
         )
 
         # Convert PIL image to numpy array, then to torch.Tensor
