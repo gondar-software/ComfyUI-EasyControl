@@ -529,6 +529,8 @@ class FluxPipeline(DiffusionPipeline, FluxLoraLoaderMixin, FromSingleFileMixin):
             spatial_images=[],
             subject_images=[],
             cond_size=512,
+            use_zero_init: Optional[bool] = True,
+            zero_steps: Optional[int] = 0,
     ):
 
         height = height or self.default_sample_size * self.vae_scale_factor
@@ -701,6 +703,9 @@ class FluxPipeline(DiffusionPipeline, FluxLoraLoaderMixin, FromSingleFileMixin):
                     joint_attention_kwargs=self.joint_attention_kwargs,
                     return_dict=False,
                 )[0]
+
+                if (i <= zero_steps) and use_zero_init:
+                    noise_pred = noise_pred*0.
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents_dtype = latents.dtype
