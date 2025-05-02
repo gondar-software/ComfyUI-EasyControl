@@ -93,9 +93,9 @@ def update_model_with_lora(checkpoint, lora_weights, transformer, cond_size, dev
 
         transformer.set_attn_processor(lora_attn_procs)
 
-global_lora_attn_procs = []
+global_lora_attn_procs = {}
 
-def update_model_with_lora_v2(lora_base_path, checkpoint_number, lora_weights, transformer, cond_size, device):
+def update_model_with_lora_v2(lora_base_path, lora_filename, lora_weights, transformer, cond_size, device):
         lora_files = sorted(os.listdir(lora_base_path))
         global global_lora_attn_procs
         if len(global_lora_attn_procs) == 0:
@@ -163,9 +163,9 @@ def update_model_with_lora_v2(lora_base_path, checkpoint_number, lora_weights, t
                     else:
                         lora_attn_procs[name] = FluxAttnProcessor2_0()
 
-                global_lora_attn_procs.append(lora_attn_procs)
+                global_lora_attn_procs[lora_file] = lora_attn_procs
 
-        transformer.set_attn_processor(clone_lora_attn_procs(global_lora_attn_procs[checkpoint_number]))
+        transformer.set_attn_processor(clone_lora_attn_procs(global_lora_attn_procs[lora_filename]))
         
 def clone_lora_attn_procs(lora_attn_procs: dict):
     return copy.deepcopy(lora_attn_procs)
