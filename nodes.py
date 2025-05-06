@@ -20,7 +20,8 @@ loras = {
     "Snoopy_1500": "snoopy-1500.safetensors",
     "3D_Cartoon_640": "3d-cartoon-640.safetensors",
     "3D_Cartoon_960": "3d-cartoon-960.safetensors",
-    "Labubu_660": "labubu-660.safetensors"
+    "Labubu_660": "labubu-660.safetensors",
+    "Classic_Toys": "classic_toys.safetensors",
 }
 
 def list_lora_models():
